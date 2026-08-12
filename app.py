@@ -7,16 +7,15 @@ import pandas as pd
 
 
 # =========================================================
-# إعدادات Telegram من Railway Variables
+# Telegram - Railway Variables
 # =========================================================
 
-TELEGRAM_BOT_TOKEN = os.getenv("7924553793:AAH_bk0YoW0EqTqQpjKS77n3WiWW0V9Yfag", "").strip()
-TELEGRAM_CHAT_ID = os.getenv("1039965311", "").strip()
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
 
 # =========================================================
-# إعدادات الفريمات
-# تم حذف 15M
+# Timeframes
 # =========================================================
 
 TIMEFRAMES = {
@@ -26,21 +25,13 @@ TIMEFRAMES = {
     "1w": "1w",
 }
 
-
-# =========================================================
-# إعدادات عامة
-# =========================================================
-
 SCAN_DELAY = 30
 REQUEST_TIMEOUT = 20
 KLINES_LIMIT = 250
 
 BINANCE_BASE_URL = "https://fapi.binance.com"
 
-
-# =========================================================
-# Session
-# =========================================================
+last_alerted_candles = {}
 
 session = requests.Session()
 
@@ -51,28 +42,24 @@ session.headers.update({
 
 
 # =========================================================
-# تخزين التنبيهات لمنع التكرار
-# =========================================================
-
-last_alerted_candles = {}
-
-
-# =========================================================
-# توقيت السعودية
+# Saudi Time
 # =========================================================
 
 def get_ksa_time():
+
     utc_now = datetime.now(timezone.utc)
+
     ksa_time = utc_now + timedelta(hours=3)
 
     return ksa_time.strftime("%d-%m-%Y %H:%M:%S")
 
 
 # =========================================================
-# تحويل الفريم للشكل العربي/الواضح
+# Timeframe Display
 # =========================================================
 
 def format_timeframe(tf):
+
     names = {
         "1h": "1H",
         "4h": "4H",
@@ -84,11 +71,13 @@ def format_timeframe(tf):
 
 
 # =========================================================
-# تنظيف السعر
+# Price Format
 # =========================================================
 
 def format_price(price):
+
     try:
+
         price = float(price)
 
         if price >= 1000:
@@ -107,21 +96,20 @@ def format_price(price):
             return f"{price:.8f}"
 
     except Exception:
+
         return str(price)
 
 
 # =========================================================
-# روابط Binance و TradingView
+# Links
 # =========================================================
 
 def get_links(symbol):
 
-    # Binance يستخدم BTCUSDT
     binance_url = (
         f"https://www.binance.com/en/futures/{symbol}"
     )
 
-    # TradingView يستخدم BTCUSDT.P
     tradingview_url = (
         f"https://www.tradingview.com/chart/"
         f"?symbol=BINANCE%3A{symbol}.P"
@@ -131,17 +119,21 @@ def get_links(symbol):
 
 
 # =========================================================
-# إرسال Telegram
+# Telegram
 # =========================================================
 
 def send_telegram_message(message):
 
     if not TELEGRAM_BOT_TOKEN:
+
         print("❌ TELEGRAM_BOT_TOKEN غير موجود")
+
         return False
 
     if not TELEGRAM_CHAT_ID:
+
         print("❌ TELEGRAM_CHAT_ID غير موجود")
+
         return False
 
     url = (
@@ -167,7 +159,9 @@ def send_telegram_message(message):
             )
 
             if response.ok:
+
                 print("✅ تم إرسال التنبيه")
+
                 return True
 
             print(
@@ -177,19 +171,22 @@ def send_telegram_message(message):
             )
 
         except requests.exceptions.Timeout:
+
             print(
                 f"⚠️ Telegram Timeout "
-                f"المحاولة {attempt + 1}/3"
+                f"{attempt + 1}/3"
             )
 
         except requests.exceptions.RequestException as e:
+
             print(
                 f"⚠️ مشكلة اتصال Telegram: {e}"
             )
 
         except Exception as e:
+
             print(
-                f"⚠️ خطأ Telegram غير متوقع: {e}"
+                f"⚠️ خطأ Telegram: {e}"
             )
 
         time.sleep(2)
@@ -198,7 +195,7 @@ def send_telegram_message(message):
 
 
 # =========================================================
-# جلب عملات Binance Futures
+# Binance Futures Symbols
 # =========================================================
 
 def get_binance_futures_symbols():
@@ -225,27 +222,25 @@ def get_binance_futures_symbols():
                 )
 
                 time.sleep(3)
+
                 continue
 
             if not response.text.strip():
 
-                print(
-                    "⚠️ Binance أعاد استجابة فارغة"
-                )
+                print("⚠️ Binance أعاد استجابة فارغة")
 
                 time.sleep(3)
+
                 continue
 
             data = response.json()
 
             if "symbols" not in data:
 
-                print(
-                    "⚠️ لم يتم العثور على symbols "
-                    "في رد Binance"
-                )
+                print("⚠️ symbols غير موجودة في رد Binance")
 
                 time.sleep(3)
+
                 continue
 
             symbols = []
@@ -258,19 +253,14 @@ def get_binance_futures_symbols():
                     and item.get("status") == "TRADING"
                 ):
 
-                    symbols.append(
-                        item["symbol"]
-                    )
+                    symbols.append(item["symbol"])
 
-            symbols = sorted(
-                list(set(symbols))
-            )
+            symbols = sorted(list(set(symbols)))
 
             if symbols:
 
                 print(
-                    f"✅ تم جلب "
-                    f"{len(symbols)} "
+                    f"✅ تم جلب {len(symbols)} "
                     f"عملة Futures"
                 )
 
@@ -285,45 +275,30 @@ def get_binance_futures_symbols():
 
         except ValueError:
 
-            print(
-                "⚠️ رد Binance ليس JSON صالح"
-            )
+            print("⚠️ رد Binance ليس JSON صالح")
 
         except requests.exceptions.RequestException as e:
 
-            print(
-                f"⚠️ مشكلة اتصال Binance: {e}"
-            )
+            print(f"⚠️ مشكلة اتصال Binance: {e}")
 
         except Exception as e:
 
-            print(
-                f"⚠️ خطأ في جلب العملات: {e}"
-            )
+            print(f"⚠️ خطأ Binance: {e}")
 
         time.sleep(3)
 
-    print(
-        "❌ فشل جلب العملات بعد عدة محاولات"
-    )
+    print("❌ فشل جلب العملات")
 
     return []
 
 
 # =========================================================
-# جلب الشموع
+# Binance Klines
 # =========================================================
 
-def fetch_klines(
-    symbol,
-    interval,
-    limit=KLINES_LIMIT,
-):
+def fetch_klines(symbol, interval, limit=KLINES_LIMIT):
 
-    url = (
-        f"{BINANCE_BASE_URL}/"
-        f"fapi/v1/klines"
-    )
+    url = f"{BINANCE_BASE_URL}/fapi/v1/klines"
 
     params = {
         "symbol": symbol,
@@ -342,19 +317,21 @@ def fetch_klines(
             )
 
             if response.status_code != 200:
+
                 time.sleep(1)
+
                 continue
 
             if not response.text.strip():
+
                 time.sleep(1)
+
                 continue
 
             data = response.json()
 
-            if (
-                not isinstance(data, list)
-                or len(data) == 0
-            ):
+            if not isinstance(data, list) or not data:
+
                 return None
 
             df = pd.DataFrame(
@@ -398,18 +375,20 @@ def fetch_klines(
             return df
 
         except Exception:
+
             time.sleep(1)
 
     return None
 
 
 # =========================================================
-# حساب الشمعة الذهبية
+# Golden Candle
 # =========================================================
 
 def calculate_golden_candle(df):
 
     if df is None or len(df) < 50:
+
         return None, 0, 0.0
 
     close = df["close"]
@@ -418,74 +397,56 @@ def calculate_golden_candle(df):
     low = df["low"]
     volume = df["volume"]
 
-
-    # =====================================================
-    # المتوسطات
-    # =====================================================
+    # Moving averages
 
     ma25 = close.ewm(
         span=25,
-        adjust=False,
+        adjust=False
     ).mean()
 
     ma50 = close.ewm(
         span=50,
-        adjust=False,
+        adjust=False
     ).mean()
 
     ma200 = close.ewm(
         span=200,
-        adjust=False,
+        adjust=False
     ).mean()
 
-
-    # =====================================================
     # MACD
-    # =====================================================
 
     exp1 = close.ewm(
         span=12,
-        adjust=False,
+        adjust=False
     ).mean()
 
     exp2 = close.ewm(
         span=26,
-        adjust=False,
+        adjust=False
     ).mean()
 
     macd_line = exp1 - exp2
 
     macd_sig = macd_line.ewm(
         span=9,
-        adjust=False,
+        adjust=False
     ).mean()
 
-    macd_hist = (
-        macd_line - macd_sig
-    )
+    macd_hist = macd_line - macd_sig
 
-
-    # =====================================================
-    # مكان الإغلاق داخل الشمعة
-    # =====================================================
+    # Candle position
 
     candle_range = (
         high - low
     ).clip(lower=1e-8)
 
     close_pos = (
-        close - low
-    ) / candle_range
+        (close - low) /
+        candle_range
+    ).clip(0.0, 1.0)
 
-    close_pos = close_pos.clip(
-        0.0,
-        1.0,
-    )
-
-
-    # =====================================================
-    # تقدير حجم الشراء والبيع
-    # =====================================================
+    # Estimated buy / sell volume
 
     est_buy_vol = (
         volume * close_pos
@@ -496,7 +457,8 @@ def calculate_golden_candle(df):
     )
 
     est_total_vol = (
-        est_buy_vol + est_sell_vol
+        est_buy_vol +
+        est_sell_vol
     ).clip(lower=1.0)
 
     buy_pct_now = (
@@ -509,10 +471,7 @@ def calculate_golden_candle(df):
         est_total_vol
     ) * 100.0
 
-
-    # =====================================================
     # Volume Ratio
-    # =====================================================
 
     mom_avg_vol = (
         volume
@@ -530,7 +489,6 @@ def calculate_golden_candle(df):
         safe_avg_vol
     )
 
-
     # =====================================================
     # Bull Score
     # =====================================================
@@ -540,9 +498,7 @@ def calculate_golden_candle(df):
         index=df.index,
     )
 
-    bull_score += (
-        (close > open_p) * 8.0
-    )
+    bull_score += (close > open_p) * 8.0
 
     bull_score += (
         (close_pos >= 0.75) * 7.0
@@ -634,7 +590,6 @@ def calculate_golden_candle(df):
     bull_score = bull_score.clip(
         upper=100.0
     )
-
 
     # =====================================================
     # Bear Score
@@ -740,9 +695,8 @@ def calculate_golden_candle(df):
         upper=100.0
     )
 
-
     # =====================================================
-    # آخر شمعة
+    # Result
     # =====================================================
 
     idx = -1
@@ -759,13 +713,7 @@ def calculate_golden_candle(df):
         close.iloc[idx]
     )
 
-
-    # =====================================================
-    # حد الشمعة الذهبية
-    # =====================================================
-
     MIN_GOLDEN_SCORE = 78.0
-
 
     if (
         b_score >= MIN_GOLDEN_SCORE
@@ -778,8 +726,7 @@ def calculate_golden_candle(df):
             price,
         )
 
-
-    elif (
+    if (
         r_score >= MIN_GOLDEN_SCORE
         and r_score > b_score
     ):
@@ -790,51 +737,34 @@ def calculate_golden_candle(df):
             price,
         )
 
-
-    return (
-        None,
-        0,
-        price,
-    )
+    return None, 0, price
 
 
 # =========================================================
-# قوة الإشارة
+# Strength
 # =========================================================
 
 def get_strength_text(score):
 
     if score >= 90:
 
-        return (
-            f"🔥 قوية جدًا "
-            f"({score:.1f}%)"
-        )
+        return f"🔥 قوية جدًا ({score:.1f}%)"
 
     elif score >= 80:
 
-        return (
-            f"💪 قوية "
-            f"({score:.1f}%)"
-        )
+        return f"💪 قوية ({score:.1f}%)"
 
     elif score >= 78:
 
-        return (
-            f"⚡ جيدة "
-            f"({score:.1f}%)"
-        )
+        return f"⚡ جيدة ({score:.1f}%)"
 
     else:
 
-        return (
-            f"متوسطة "
-            f"({score:.1f}%)"
-        )
+        return f"متوسطة ({score:.1f}%)"
 
 
 # =========================================================
-# إنشاء رسالة Telegram
+# Telegram Message
 # =========================================================
 
 def build_message(
@@ -846,57 +776,37 @@ def build_message(
     candle_status,
 ):
 
-    symbol_display = (
-        f"{symbol}.P"
+    symbol_display = f"{symbol}.P"
+
+    tf_display = format_timeframe(
+        timeframe
     )
 
-    tf_display = (
-        format_timeframe(
-            timeframe
-        )
+    strength = get_strength_text(
+        score
     )
 
-    strength = (
-        get_strength_text(
-            score
-        )
-    )
+    ksa_time = get_ksa_time()
 
-    ksa_time = (
-        get_ksa_time()
-    )
-
-    price_text = (
-        format_price(
-            price
-        )
+    price_text = format_price(
+        price
     )
 
     binance_url, tradingview_url = (
         get_links(symbol)
     )
 
-
     if candle_status == "forming":
 
-        status_text = (
-            "قيد التكوين ⚠️"
-        )
+        status_text = "قيد التكوين ⚠️"
 
-        title = (
-            "🟡 GOLDEN CANDLE — LIVE"
-        )
+        title = "🟡 GOLDEN CANDLE — LIVE"
 
     else:
 
-        status_text = (
-            "مؤكدة بعد الإغلاق ✅"
-        )
+        status_text = "مؤكدة بعد الإغلاق ✅"
 
-        title = (
-            "✅ GOLDEN CANDLE — CONFIRMED"
-        )
-
+        title = "✅ GOLDEN CANDLE — CONFIRMED"
 
     message = f"""
 {title}
@@ -918,7 +828,7 @@ def build_message(
 
 
 # =========================================================
-# تنظيف سجل التنبيهات القديم
+# Cache Cleanup
 # =========================================================
 
 def cleanup_alert_cache():
@@ -938,14 +848,12 @@ def cleanup_alert_cache():
 
 
 # =========================================================
-# فحص السوق
+# Market Scanner
 # =========================================================
 
 def scan_market():
 
-    print(
-        "🚀 تم تشغيل Ahmed Golden Entry AI"
-    )
+    print("🚀 تم تشغيل Ahmed Golden Entry AI")
 
     while True:
 
@@ -953,16 +861,10 @@ def scan_market():
             get_binance_futures_symbols()
         )
 
-
-        # =================================================
-        # إذا Binance لم يعط العملات
-        # لا يبدأ على 0 عملة
-        # =================================================
-
         if not symbols:
 
             print(
-                "⚠️ لم يتم جلب العملات."
+                "⚠️ لم يتم جلب العملات"
             )
 
             print(
@@ -973,11 +875,9 @@ def scan_market():
 
             continue
 
-
         print(
             f"🔍 بدء فحص "
-            f"{len(symbols)} "
-            f"عملة"
+            f"{len(symbols)} عملة"
         )
 
         print(
@@ -985,17 +885,7 @@ def scan_market():
             "1H | 4H | 1D | 1W"
         )
 
-
-        # =================================================
-        # العملات
-        # =================================================
-
         for symbol in symbols:
-
-
-            # =============================================
-            # الفريمات
-            # =============================================
 
             for tf_key, tf_val in TIMEFRAMES.items():
 
@@ -1014,9 +904,8 @@ def scan_market():
 
                         continue
 
-
                     # =====================================
-                    # 1 - الشمعة الحالية
+                    # الشمعة الحالية - LIVE
                     # =====================================
 
                     (
@@ -1027,38 +916,33 @@ def scan_market():
                         df
                     )
 
-
-                    current_candle_timestamp = int(
+                    current_timestamp = int(
                         df["timestamp"].iloc[-1]
                     )
-
 
                     if direction_forming:
 
                         alert_key = (
                             f"{symbol}_"
                             f"{tf_key}_"
-                            f"{current_candle_timestamp}_"
+                            f"{current_timestamp}_"
                             f"forming_"
                             f"{direction_forming}"
                         )
 
-
                         if (
                             alert_key
-                            not in
-                            last_alerted_candles
+                            not in last_alerted_candles
                         ):
 
                             msg = build_message(
-                                symbol=symbol,
-                                timeframe=tf_key,
-                                price=price_forming,
-                                direction=direction_forming,
-                                score=score_forming,
-                                candle_status="forming",
+                                symbol,
+                                tf_key,
+                                price_forming,
+                                direction_forming,
+                                score_forming,
+                                "forming",
                             )
-
 
                             if send_telegram_message(
                                 msg
@@ -1068,15 +952,13 @@ def scan_market():
                                     alert_key
                                 ] = True
 
-
                     # =====================================
-                    # 2 - آخر شمعة مغلقة
+                    # الشمعة المغلقة - CONFIRMED
                     # =====================================
 
                     closed_df = (
                         df.iloc[:-1].copy()
                     )
-
 
                     (
                         direction_closed,
@@ -1086,40 +968,35 @@ def scan_market():
                         closed_df
                     )
 
-
-                    closed_candle_timestamp = int(
+                    closed_timestamp = int(
                         closed_df[
                             "timestamp"
                         ].iloc[-1]
                     )
-
 
                     if direction_closed:
 
                         alert_key = (
                             f"{symbol}_"
                             f"{tf_key}_"
-                            f"{closed_candle_timestamp}_"
+                            f"{closed_timestamp}_"
                             f"closed_"
                             f"{direction_closed}"
                         )
 
-
                         if (
                             alert_key
-                            not in
-                            last_alerted_candles
+                            not in last_alerted_candles
                         ):
 
                             msg = build_message(
-                                symbol=symbol,
-                                timeframe=tf_key,
-                                price=price_closed,
-                                direction=direction_closed,
-                                score=score_closed,
-                                candle_status="closed",
+                                symbol,
+                                tf_key,
+                                price_closed,
+                                direction_closed,
+                                score_closed,
+                                "closed",
                             )
-
 
                             if send_telegram_message(
                                 msg
@@ -1129,40 +1006,30 @@ def scan_market():
                                     alert_key
                                 ] = True
 
-
                     time.sleep(0.15)
-
 
                 except Exception as e:
 
                     print(
                         f"⚠️ خطأ "
                         f"{symbol} "
-                        f"{tf_key}: "
-                        f"{e}"
+                        f"{tf_key}: {e}"
                     )
-
 
         cleanup_alert_cache()
 
-
-        print(
-            "✅ انتهى الفحص الكامل"
-        )
+        print("✅ انتهى الفحص الكامل")
 
         print(
             f"⏳ انتظار "
-            f"{SCAN_DELAY} "
-            f"ثانية..."
+            f"{SCAN_DELAY} ثانية..."
         )
 
-        time.sleep(
-            SCAN_DELAY
-        )
+        time.sleep(SCAN_DELAY)
 
 
 # =========================================================
-# تشغيل البرنامج
+# Start
 # =========================================================
 
 if __name__ == "__main__":
